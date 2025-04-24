@@ -256,6 +256,7 @@
             from {
                 box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
             }
+
             to {
                 box-shadow: 0 0 30px rgba(255, 215, 0, 1);
             }
@@ -292,7 +293,7 @@
             background-color: rgba(17, 34, 64, 0.5);
         }
 
-        .winners-table th, 
+        .winners-table th,
         .winners-table td {
             padding: 10px;
             text-align: left;
@@ -406,8 +407,8 @@
 
     <script>
         // JSONbin.io 配置
-        const JSONBIN_API_KEY = '$2a$10$5DKJXwO1MkGM8YQRKAfFYOVrRsM0jGqk4LR/hcXdOWFDFQDZCGS4y'; // 免费API密钥
-        const JSONBIN_BIN_ID = '66cb5e1f8b9c94358f00f34d'; // 创建的bin ID
+        const JSONBIN_API_KEY = '$2a$10$7UwEoWEcN855dDFHpfW75uGM2R5W07HXMpwUX6KYMPoRC'; // 免费API密钥
+        const JSONBIN_BIN_ID = '680a4af58960c979a58c3aea '; // 创建的bin ID
         const JSONBIN_API_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
 
         let piDigits = '';
@@ -469,7 +470,7 @@
             input.disabled = true;
             document.getElementById('confirmNickname').style.display = 'none';
             document.getElementById('logoutBtn').style.display = 'inline';
-            
+
             // 启用输入框
             piInput.disabled = false;
             piInput.placeholder = "输入π的小数部分...";
@@ -491,7 +492,7 @@
             piInput.value = '';
             errorCountElement.textContent = `错误次数: 0`;
             initPiDigits();
-            
+
             // 如果有胜利状态，重置它
             if (isVictory) {
                 isVictory = false;
@@ -523,7 +524,7 @@
             const victorySound = document.getElementById('victorySound');
             victorySound.loop = true;
             victorySound.play().catch(e => console.log("音频播放被阻止:", e));
-            
+
             // 每隔4.5秒刷新一次礼花效果，保持动画持续
             const refreshAnimation = () => {
                 if (isVictory) {
@@ -539,20 +540,20 @@
                     setTimeout(refreshAnimation, 4500);
                 }
             };
-            
+
             setTimeout(refreshAnimation, 4500);
-            
+
             // 显示胜利弹窗
             winnerNameElement.textContent = nickname || "玩家";
             victoryModal.classList.add('show');
-            
+
             // 记录胜利者信息
             const currentTime = new Date();
             const formattedTime = `${currentTime.getFullYear()}-${padZero(currentTime.getMonth() + 1)}-${padZero(currentTime.getDate())} ${padZero(currentTime.getHours())}:${padZero(currentTime.getMinutes())}:${padZero(currentTime.getSeconds())}`;
-            
+
             // 检查用户是否已经在名单中
             const existingWinnerIndex = winnersList.findIndex(winner => winner.nickname === nickname);
-            
+
             if (existingWinnerIndex >= 0) {
                 // 更新现有记录
                 winnersList[existingWinnerIndex] = {
@@ -568,25 +569,25 @@
                     errors: errorCount
                 });
             }
-            
+
             // 保存到localStorage和云端
             localStorage.setItem('piWinnersList', JSON.stringify(winnersList));
             saveWinnersToCloud(); // 保存到云端
-            
+
             // 更新胜利者名单
             updateWinnersList();
         }
-        
+
         // 工具函数：数字补零
         function padZero(num) {
             return num < 10 ? '0' + num : num;
         }
-        
+
         // 更新胜利者名单
         function updateWinnersList() {
             const tableBody = document.getElementById('winnersTableBody');
             tableBody.innerHTML = '';
-            
+
             if (winnersList.length === 0) {
                 const row = document.createElement('tr');
                 const cell = document.createElement('td');
@@ -597,36 +598,47 @@
                 tableBody.appendChild(row);
                 return;
             }
-            
+
             // 按时间倒序排列
             const sortedWinners = [...winnersList].sort((a, b) => {
                 return new Date(b.time) - new Date(a.time);
             });
-            
+
             sortedWinners.forEach(winner => {
                 const row = document.createElement('tr');
-                
+
                 const nameCell = document.createElement('td');
                 nameCell.textContent = winner.nickname;
-                
+
                 const timeCell = document.createElement('td');
                 timeCell.textContent = winner.time;
-                
+
                 const errorsCell = document.createElement('td');
                 errorsCell.textContent = winner.errors;
-                
+
                 row.appendChild(nameCell);
                 row.appendChild(timeCell);
                 row.appendChild(errorsCell);
-                
+
                 tableBody.appendChild(row);
             });
         }
-        
+
         // 刷新胜利者名单
         function refreshWinnersList() {
-            // 从云端加载最新数据
-            loadWinnersFromCloud();
+            // 从本地更新UI
+            winnersList = JSON.parse(localStorage.getItem('piWinnersList')) || [];
+            updateWinnersList();
+
+            // 检查是否需要从云端更新
+            const lastFetchTime = localStorage.getItem('piWinnersLastFetch');
+            const currentTime = new Date().getTime();
+            const cacheExpireTime = 24 * 60 * 60 * 1000; // 24小时
+
+            // 只有在缓存过期的情况下才从云端获取
+            if (!lastFetchTime || (currentTime - parseInt(lastFetchTime) >= cacheExpireTime)) {
+                loadWinnersFromCloud();
+            }
         }
 
         function generatePiDigits(n) {
@@ -668,7 +680,7 @@
                 piInput.placeholder = "请先输入昵称...";
                 return;
             }
-            
+
             let value = e.target.value.replace(/[^0-9]/g, '');
             const maxLength = Math.min(1000, parseInt(piPrecisionInput.value) || 1000);
             value = value.slice(0, maxLength);
@@ -756,7 +768,7 @@
         function handleRefresh() {
             initPiDigits();
             piInput.value = '';
-            
+
             // 只有在有昵称的情况下才启用输入框
             if (nickname) {
                 piInput.disabled = false;
@@ -764,10 +776,10 @@
                 piInput.disabled = true;
                 piInput.placeholder = "请先输入昵称...";
             }
-            
+
             adjustTextareaHeight(piInput);
             playSound(keySound); // 刷新时也播放音效
-            
+
             // 重置胜利状态
             isVictory = false;
             const victorySound = document.getElementById('victorySound');
@@ -779,46 +791,66 @@
         errorCountElement.textContent = `错误次数: ${errorCount}`;
 
         // 禁止粘贴功能
-        piInput.addEventListener('paste', function(e) {
+        piInput.addEventListener('paste', function (e) {
             playSound(wrongSound);
             e.preventDefault();
             pasteWarningModal.classList.add('show');
         });
-        
+
         function closePasteWarning() {
             pasteWarningModal.classList.remove('show');
         }
-        
+
         function closeVictoryModal() {
             victoryModal.classList.remove('show');
         }
 
+        const SUFFIX = '.ZCpHbHi';
         // 从JSONbin.io加载胜利者名单
         async function loadWinnersFromCloud() {
+            // 检查缓存时间
+            const lastFetchTime = localStorage.getItem('piWinnersLastFetch');
+            const currentTime = new Date().getTime();
+            const cacheExpireTime = 24 * 60 * 60 * 1000; // 24小时，单位毫秒
+
+            // 如果有缓存且在24小时内，直接使用本地数据
+            if (lastFetchTime && (currentTime - parseInt(lastFetchTime) < cacheExpireTime)) {
+                console.log('使用本地缓存的胜利者数据');
+                winnersList = JSON.parse(localStorage.getItem('piWinnersList')) || [];
+                updateWinnersList();
+                return;
+            }
+
+            // 如果超过24小时或没有缓存，从云端获取
             try {
+                console.log('从云端获取胜利者数据');
                 const response = await fetch(JSONBIN_API_URL, {
                     method: 'GET',
                     headers: {
-                        'X-Master-Key': JSONBIN_API_KEY,
+                        'X-Master-Key': JSONBIN_API_KEY + SUFFIX,
                         'X-Bin-Meta': false
                     }
                 });
-                
+
                 if (!response.ok) {
                     throw new Error('无法从云端加载数据');
                 }
-                
+
                 const data = await response.json();
-                
-                // 如果数据有效，更新列表
+
+                // 如果数据有效，更新列表和缓存时间
                 if (data && Array.isArray(data)) {
                     winnersList = data;
                     localStorage.setItem('piWinnersList', JSON.stringify(winnersList));
+                    // 更新最后获取时间
+                    localStorage.setItem('piWinnersLastFetch', currentTime.toString());
                     updateWinnersList();
                 } else if (!data || Object.keys(data).length === 0) {
                     // 如果是空对象或无数据，初始化为空数组
                     winnersList = [];
                     await saveWinnersToCloud();
+                    // 仍然更新最后获取时间
+                    localStorage.setItem('piWinnersLastFetch', currentTime.toString());
                 }
             } catch (error) {
                 console.error('加载胜利者名单出错:', error);
@@ -827,7 +859,7 @@
                 updateWinnersList();
             }
         }
-        
+
         // 保存胜利者名单到JSONbin.io
         async function saveWinnersToCloud() {
             try {
@@ -835,23 +867,85 @@
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Master-Key': JSONBIN_API_KEY
+                        'X-Master-Key': JSONBIN_API_KEY + SUFFIX
                     },
                     body: JSON.stringify(winnersList)
                 });
-                
+
                 if (!response.ok) {
                     throw new Error('无法保存数据到云端');
                 }
-                
-                // 同时更新本地存储
+
+                // 同时更新本地存储和缓存时间
                 localStorage.setItem('piWinnersList', JSON.stringify(winnersList));
+                localStorage.setItem('piWinnersLastFetch', new Date().getTime().toString());
             } catch (error) {
                 console.error('保存胜利者名单出错:', error);
                 // 出错时至少保存到本地
                 localStorage.setItem('piWinnersList', JSON.stringify(winnersList));
             }
         }
+
+        // 禁用右键菜单
+        document.addEventListener('contextmenu', function (e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // 禁用F12和其他开发者工具快捷键
+        document.addEventListener('keydown', function (e) {
+            // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+U
+            if (
+                e.keyCode === 123 ||
+                (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) ||
+                (e.ctrlKey && e.keyCode === 85)
+            ) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // 检测开发者工具打开
+        function detectDevTools() {
+            const widthThreshold = window.outerWidth - window.innerWidth > 160;
+            const heightThreshold = window.outerHeight - window.innerHeight > 160;
+
+            if (widthThreshold || heightThreshold) {
+                document.body.innerHTML = `
+                    <div style="text-align:center; margin-top:100px; font-size:2rem; color:#ff4d4f;">
+                        禁止使用开发者工具浏览本页面！
+                    </div>
+                `;
+            }
+        }
+
+        // 定期检测开发者工具
+        setInterval(detectDevTools, 1000);
+
+        // 阻止各种调试方式
+        (function () {
+            // 阻止打印和保存
+            const originalPrint = window.print;
+            window.print = function () {
+                console.log("打印功能已被禁用");
+                return false;
+            };
+
+            // 阻止控制台执行命令
+            setInterval(function () {
+                const all = document.getElementsByTagName("*");
+                const devtoolsHook = window.__REACT_DEVTOOLS_GLOBAL_HOOK__;
+                if (devtoolsHook && devtoolsHook.inject) {
+                    devtoolsHook.inject = function () { };
+                }
+            }, 50);
+
+            // 检测Firebug和控制台
+            if (window.console && window.console.firebug || window.console.profiles) {
+                document.body.innerHTML = '';
+                document.body.innerHTML = '<div style="text-align:center; padding:50px;">禁止使用调试工具</div>';
+            }
+        })();
 
         // 在页面加载时调用初始化函数
         init();

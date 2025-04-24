@@ -405,6 +405,11 @@
     <audio id="victorySound" src="./victor.wav" loop></audio>
 
     <script>
+        // JSONbin.io 配置
+        const JSONBIN_API_KEY = '$2a$10$5DKJXwO1MkGM8YQRKAfFYOVrRsM0jGqk4LR/hcXdOWFDFQDZCGS4y'; // 免费API密钥
+        const JSONBIN_BIN_ID = '66cb5e1f8b9c94358f00f34d'; // 创建的bin ID
+        const JSONBIN_API_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+
         let piDigits = '';
         let errorCount = parseInt(localStorage.getItem('piErrorCount')) || 0;
         let nickname = localStorage.getItem('piNickname');
@@ -423,7 +428,7 @@
         const victoryModal = document.getElementById('victoryModal');
         const winnerNameElement = document.getElementById('winnerName');
         let isVictory = false;
-        // 从localStorage加载胜利者列表
+        // 从localStorage加载胜利者列表（作为临时列表，直到从云端加载完成）
         let winnersList = JSON.parse(localStorage.getItem('piWinnersList')) || [];
 
         // 音频元素
@@ -564,8 +569,9 @@
                 });
             }
             
-            // 保存到localStorage
+            // 保存到localStorage和云端
             localStorage.setItem('piWinnersList', JSON.stringify(winnersList));
+            saveWinnersToCloud(); // 保存到云端
             
             // 更新胜利者名单
             updateWinnersList();
@@ -619,8 +625,8 @@
         
         // 刷新胜利者名单
         function refreshWinnersList() {
-            winnersList = JSON.parse(localStorage.getItem('piWinnersList')) || [];
-            updateWinnersList();
+            // 从云端加载最新数据
+            loadWinnersFromCloud();
         }
 
         function generatePiDigits(n) {
@@ -787,10 +793,70 @@
             victoryModal.classList.remove('show');
         }
 
+        // 从JSONbin.io加载胜利者名单
+        async function loadWinnersFromCloud() {
+            try {
+                const response = await fetch(JSONBIN_API_URL, {
+                    method: 'GET',
+                    headers: {
+                        'X-Master-Key': JSONBIN_API_KEY,
+                        'X-Bin-Meta': false
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('无法从云端加载数据');
+                }
+                
+                const data = await response.json();
+                
+                // 如果数据有效，更新列表
+                if (data && Array.isArray(data)) {
+                    winnersList = data;
+                    localStorage.setItem('piWinnersList', JSON.stringify(winnersList));
+                    updateWinnersList();
+                } else if (!data || Object.keys(data).length === 0) {
+                    // 如果是空对象或无数据，初始化为空数组
+                    winnersList = [];
+                    await saveWinnersToCloud();
+                }
+            } catch (error) {
+                console.error('加载胜利者名单出错:', error);
+                // 加载失败时使用本地存储的数据
+                winnersList = JSON.parse(localStorage.getItem('piWinnersList')) || [];
+                updateWinnersList();
+            }
+        }
+        
+        // 保存胜利者名单到JSONbin.io
+        async function saveWinnersToCloud() {
+            try {
+                const response = await fetch(JSONBIN_API_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': JSONBIN_API_KEY
+                    },
+                    body: JSON.stringify(winnersList)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('无法保存数据到云端');
+                }
+                
+                // 同时更新本地存储
+                localStorage.setItem('piWinnersList', JSON.stringify(winnersList));
+            } catch (error) {
+                console.error('保存胜利者名单出错:', error);
+                // 出错时至少保存到本地
+                localStorage.setItem('piWinnersList', JSON.stringify(winnersList));
+            }
+        }
+
         // 在页面加载时调用初始化函数
         init();
-        // 初始化胜利者名单
-        updateWinnersList();
+        // 初始化胜利者名单（从云端加载）
+        loadWinnersFromCloud();
     </script>
 </body>
 

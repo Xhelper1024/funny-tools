@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pi 数字验证</title>
     <style>
         body {
@@ -951,6 +951,59 @@
         init();
         // 初始化胜利者名单（从云端加载）
         loadWinnersFromCloud();
+
+        // 禁用浏览器缩放
+        // 防止键盘缩放快捷键
+        document.addEventListener('keydown', function (e) {
+            // Ctrl + '+', Ctrl + '-', Ctrl + '0'
+            if (
+                (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '_' || e.key === '0' || e.keyCode === 107 || e.keyCode === 109 || e.keyCode === 187 || e.keyCode === 189 || e.keyCode === 48))
+            ) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // 阻止鼠标滚轮缩放
+        document.addEventListener('wheel', function (e) {
+            if (e.ctrlKey) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // 阻止双指缩放（触摸设备）
+        document.addEventListener('touchstart', function (e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // 当窗口大小变化时恢复缩放比例
+        window.addEventListener('resize', function () {
+            if (document.body.clientWidth !== window.innerWidth) {
+                window.scrollTo(0, 0);
+                document.body.style.transform = 'scale(1)';
+                document.body.style.transformOrigin = '0 0';
+            }
+        });
+
+        // 保持页面缩放比例为1
+        function preventZoom() {
+            const meta = document.querySelector('meta[name="viewport"]');
+            if (meta) {
+                meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+            }
+            
+            // 对于某些iOS设备，需要动态更新meta
+            if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                document.addEventListener('gesturestart', function (e) {
+                    e.preventDefault();
+                });
+            }
+        }
+
+        // 初始化时调用防缩放功能
+        preventZoom();
     </script>
 </body>
 

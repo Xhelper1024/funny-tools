@@ -211,6 +211,109 @@
             height: 100vh;
             pointer-events: none;
         }
+
+        /* 新增警告弹窗样式 */
+        .warning-modal {
+            background-color: #ffd700;
+            color: #000;
+            border: 3px solid #ff8c00;
+            text-align: center;
+            padding: 20px;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .warning-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            color: #ff8c00;
+        }
+
+        /* 胜利弹窗样式 */
+        .victory-modal {
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .medal {
+            width: 150px;
+            height: 150px;
+            background-color: gold;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 80px;
+            color: #0a192f;
+            border: 5px solid #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+            animation: shine 2s infinite alternate;
+        }
+
+        @keyframes shine {
+            from {
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+            }
+            to {
+                box-shadow: 0 0 30px rgba(255, 215, 0, 1);
+            }
+        }
+
+        .victory-text {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #64ffda;
+        }
+
+        .close-btn {
+            margin-top: 20px;
+        }
+
+        /* 胜利者名单样式 */
+        .winners-list-container {
+            margin-top: 40px;
+            border-top: 1px solid #64ffda;
+            padding-top: 20px;
+        }
+
+        .winners-list-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #64ffda;
+            text-align: center;
+        }
+
+        .winners-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 auto;
+            background-color: rgba(17, 34, 64, 0.5);
+        }
+
+        .winners-table th, 
+        .winners-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #233554;
+        }
+
+        .winners-table th {
+            background-color: #112240;
+            color: #64ffda;
+        }
+
+        .winners-table tr:hover {
+            background-color: #233554;
+        }
+
+        .no-winners {
+            text-align: center;
+            padding: 20px;
+            color: #8892b0;
+            font-style: italic;
+        }
     </style>
 </head>
 
@@ -256,6 +359,40 @@
         <p>是π的第<span id="digitPosition">0</span>位数字</p>
     </div>
 
+    <!-- 警告弹窗 -->
+    <div id="pasteWarningModal" class="modal warning-modal">
+        <div class="warning-icon">⚠️</div>
+        <p>禁止粘贴！请手动输入数字。</p>
+        <button onclick="closePasteWarning()">我知道了</button>
+    </div>
+
+    <!-- 胜利弹窗 -->
+    <div id="victoryModal" class="modal victory-modal">
+        <div class="medal">🏆</div>
+        <div class="victory-text">恭喜 <span id="winnerName"></span> 获得胜利！</div>
+        <button class="close-btn" onclick="closeVictoryModal()">关闭</button>
+    </div>
+
+    <!-- 新增一个按钮来手动刷新胜利者名单 -->
+    <button onclick="refreshWinnersList()" style="margin-top: 20px;">刷新胜利者名单</button>
+
+    <!-- 胜利者名单 -->
+    <div class="winners-list-container">
+        <h2 class="winners-list-title">🏆 胜利者名单 🏆</h2>
+        <table class="winners-table" id="winnersTable">
+            <thead>
+                <tr>
+                    <th>昵称</th>
+                    <th>胜利时间</th>
+                    <th>错误次数</th>
+                </tr>
+            </thead>
+            <tbody id="winnersTableBody">
+                <!-- 胜利者数据将在这里动态插入 -->
+            </tbody>
+        </table>
+    </div>
+
     <!-- 音频元素 -->
     <audio id="correctSound" src="./correct.wav" preload="auto"></audio>
     <audio id="wrongSound" src="./wrong.wav" preload="auto"></audio>
@@ -282,6 +419,12 @@
         const errorDigitDisplay = document.getElementById('errorDigitDisplay');
         const correctDigitDisplay = document.getElementById('correctDigitDisplay');
         const digitPositionElement = document.getElementById('digitPosition');
+        const pasteWarningModal = document.getElementById('pasteWarningModal');
+        const victoryModal = document.getElementById('victoryModal');
+        const winnerNameElement = document.getElementById('winnerName');
+        let isVictory = false;
+        // 从localStorage加载胜利者列表
+        let winnersList = JSON.parse(localStorage.getItem('piWinnersList')) || [];
 
         // 音频元素
         const correctSound = document.getElementById('correctSound');
@@ -298,6 +441,12 @@
                 document.getElementById('nicknameInput').disabled = true;
                 document.getElementById('confirmNickname').style.display = 'none';
                 document.getElementById('logoutBtn').style.display = 'inline';
+                // 启用输入框
+                piInput.disabled = false;
+            } else {
+                // 如果没有昵称，禁用输入框
+                piInput.disabled = true;
+                piInput.placeholder = "请先输入昵称...";
             }
             errorCountElement.textContent = `错误次数: ${errorCount}`;
             initPiDigits();
@@ -315,17 +464,43 @@
             input.disabled = true;
             document.getElementById('confirmNickname').style.display = 'none';
             document.getElementById('logoutBtn').style.display = 'inline';
+            
+            // 启用输入框
+            piInput.disabled = false;
+            piInput.placeholder = "输入π的小数部分...";
+            piInput.focus();
         }
 
         // 退出登录
         function logout() {
             localStorage.removeItem('piNickname');
             localStorage.removeItem('piErrorCount');
-            location.reload();
+            nickname = null;
+            errorCount = 0;
+            document.getElementById('nicknameInput').value = '';
+            document.getElementById('nicknameInput').disabled = false;
+            document.getElementById('confirmNickname').style.display = 'inline';
+            document.getElementById('logoutBtn').style.display = 'none';
+            piInput.disabled = true;
+            piInput.placeholder = "请先输入昵称...";
+            piInput.value = '';
+            errorCountElement.textContent = `错误次数: 0`;
+            initPiDigits();
+            
+            // 如果有胜利状态，重置它
+            if (isVictory) {
+                isVictory = false;
+                const victorySound = document.getElementById('victorySound');
+                victorySound.pause();
+                victorySound.currentTime = 0;
+                document.getElementById('completedAnimation').innerHTML = '';
+                victoryModal.classList.remove('show');
+            }
         }
 
         // 完成动画
         function playCompleteAnimation() {
+            isVictory = true;
             const container = document.getElementById('completedAnimation');
             const colors = ['#64ffda', '#ff4d4f', '#007bff'];
 
@@ -339,15 +514,113 @@
                 container.appendChild(confetti);
             }
 
-            // 播放音效
+            // 播放音效并设置循环
             const victorySound = document.getElementById('victorySound');
-            victorySound.play();
-
-            // 重置动画
-            setTimeout(() => {
-                container.innerHTML = '';
-                victorySound.pause();
-            }, 5000);
+            victorySound.loop = true;
+            victorySound.play().catch(e => console.log("音频播放被阻止:", e));
+            
+            // 每隔4.5秒刷新一次礼花效果，保持动画持续
+            const refreshAnimation = () => {
+                if (isVictory) {
+                    container.innerHTML = '';
+                    for (let i = 0; i < 100; i++) {
+                        const confetti = document.createElement('div');
+                        confetti.className = 'confetti';
+                        confetti.style.left = Math.random() * 100 + 'vw';
+                        confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                        confetti.style.animationDelay = Math.random() * 2 + 's';
+                        container.appendChild(confetti);
+                    }
+                    setTimeout(refreshAnimation, 4500);
+                }
+            };
+            
+            setTimeout(refreshAnimation, 4500);
+            
+            // 显示胜利弹窗
+            winnerNameElement.textContent = nickname || "玩家";
+            victoryModal.classList.add('show');
+            
+            // 记录胜利者信息
+            const currentTime = new Date();
+            const formattedTime = `${currentTime.getFullYear()}-${padZero(currentTime.getMonth() + 1)}-${padZero(currentTime.getDate())} ${padZero(currentTime.getHours())}:${padZero(currentTime.getMinutes())}:${padZero(currentTime.getSeconds())}`;
+            
+            // 检查用户是否已经在名单中
+            const existingWinnerIndex = winnersList.findIndex(winner => winner.nickname === nickname);
+            
+            if (existingWinnerIndex >= 0) {
+                // 更新现有记录
+                winnersList[existingWinnerIndex] = {
+                    nickname: nickname,
+                    time: formattedTime,
+                    errors: errorCount
+                };
+            } else {
+                // 添加新记录
+                winnersList.push({
+                    nickname: nickname,
+                    time: formattedTime,
+                    errors: errorCount
+                });
+            }
+            
+            // 保存到localStorage
+            localStorage.setItem('piWinnersList', JSON.stringify(winnersList));
+            
+            // 更新胜利者名单
+            updateWinnersList();
+        }
+        
+        // 工具函数：数字补零
+        function padZero(num) {
+            return num < 10 ? '0' + num : num;
+        }
+        
+        // 更新胜利者名单
+        function updateWinnersList() {
+            const tableBody = document.getElementById('winnersTableBody');
+            tableBody.innerHTML = '';
+            
+            if (winnersList.length === 0) {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 3;
+                cell.className = 'no-winners';
+                cell.textContent = '暂无胜利者记录';
+                row.appendChild(cell);
+                tableBody.appendChild(row);
+                return;
+            }
+            
+            // 按时间倒序排列
+            const sortedWinners = [...winnersList].sort((a, b) => {
+                return new Date(b.time) - new Date(a.time);
+            });
+            
+            sortedWinners.forEach(winner => {
+                const row = document.createElement('tr');
+                
+                const nameCell = document.createElement('td');
+                nameCell.textContent = winner.nickname;
+                
+                const timeCell = document.createElement('td');
+                timeCell.textContent = winner.time;
+                
+                const errorsCell = document.createElement('td');
+                errorsCell.textContent = winner.errors;
+                
+                row.appendChild(nameCell);
+                row.appendChild(timeCell);
+                row.appendChild(errorsCell);
+                
+                tableBody.appendChild(row);
+            });
+        }
+        
+        // 刷新胜利者名单
+        function refreshWinnersList() {
+            winnersList = JSON.parse(localStorage.getItem('piWinnersList')) || [];
+            updateWinnersList();
         }
 
         function generatePiDigits(n) {
@@ -383,11 +656,13 @@
         }
 
         piInput.addEventListener('input', function (e) {
+            // 检查用户是否已输入昵称
             if (!nickname) {
-                alert('请先输入昵称');
                 e.target.value = '';
+                piInput.placeholder = "请先输入昵称...";
                 return;
             }
+            
             let value = e.target.value.replace(/[^0-9]/g, '');
             const maxLength = Math.min(1000, parseInt(piPrecisionInput.value) || 1000);
             value = value.slice(0, maxLength);
@@ -475,12 +750,47 @@
         function handleRefresh() {
             initPiDigits();
             piInput.value = '';
-            piInput.disabled = false;
+            
+            // 只有在有昵称的情况下才启用输入框
+            if (nickname) {
+                piInput.disabled = false;
+            } else {
+                piInput.disabled = true;
+                piInput.placeholder = "请先输入昵称...";
+            }
+            
             adjustTextareaHeight(piInput);
             playSound(keySound); // 刷新时也播放音效
+            
+            // 重置胜利状态
+            isVictory = false;
+            const victorySound = document.getElementById('victorySound');
+            victorySound.pause();
+            victorySound.currentTime = 0;
+            document.getElementById('completedAnimation').innerHTML = '';
         }
 
         errorCountElement.textContent = `错误次数: ${errorCount}`;
+
+        // 禁止粘贴功能
+        piInput.addEventListener('paste', function(e) {
+            playSound(wrongSound);
+            e.preventDefault();
+            pasteWarningModal.classList.add('show');
+        });
+        
+        function closePasteWarning() {
+            pasteWarningModal.classList.remove('show');
+        }
+        
+        function closeVictoryModal() {
+            victoryModal.classList.remove('show');
+        }
+
+        // 在页面加载时调用初始化函数
+        init();
+        // 初始化胜利者名单
+        updateWinnersList();
     </script>
 </body>
 
